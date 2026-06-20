@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Windows 11 Portal System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            width: 100vw;
+            height: 100vh;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #000;
+            overflow: hidden;
+            color: white;
+        }
+
+        #desktop {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(135deg, #0a0e27, #1a1f3a);
+            position: relative;
+        }
+
+        /* WALLPAPER THEMES */
+        #desktop.theme-black { background: #000000 !important; }
+        #desktop.theme-blue { background: linear-gradient(135deg, #0078d7, #005a9e) !important; }
+        #desktop.theme-purple { background: linear-gradient(135deg, #9B59B6, #8E44AD) !important; }
+        #desktop.theme-green { background: linear-gradient(135deg, #27AE60, #1E8449) !important; }
+        #desktop.theme-sunset { background: linear-gradient(135deg, #E67E22, #D35400) !important; }
+        #desktop.theme-ocean { background: linear-gradient(135deg, #2E86AB, #0B3C5D) !important; }
+        #desktop.theme-forest { background: linear-gradient(135deg, #1B4D2E, #0F3D1F) !important; }
+
+        /* WIDGETS */
+        #widgets {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 100;
+        }
+
+        .widget {
+            background: rgba(30, 30, 30, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 12px;
+            min-width: 180px;
+        }
+
+        .widget-title {
+            font-size: 10px;
+            color: #999;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            padding: 4px 0;
+        }
+
+        /* MAIN CONTENT */
+        #content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 40px;
+            z-index: 5;
+        }
+
+        #portal-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, 100px);
+            grid-auto-rows: 120px;
+            gap: 20px;
+        }
+
+        .portal {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            draggable: true;
+        }
+
+        .portal:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-4px);
+        }
+
+        .portal-icon {
+            font-size: 40px;
+            margin-bottom: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+        }
+
+        .portal-name {
+            font-size: 11px;
+            text-align: center;
+            line-height: 1.2;
+            word-break: break-word;
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #E74C3C;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-weight: bold;
+            border: none;
+            font-size: 14px;
+        }
+
+        .edit-mode .delete-btn {
+            display: flex;
+        }
+
+        /* TASKBAR */
+        #taskbar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: rgba(30, 30, 30, 0.95);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            gap: 12px;
+            z-index: 10000;
+        }
+
+        .taskbar-btn {
+            width: 44px;
+            height: 44px;
+            border: none;
+            background: transparent;
+            color: white;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .taskbar-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .taskbar-btn:active {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        #search-bar {
+            height: 36px;
+            padding: 0 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 18px;
+            color: white;
+            outline: none;
+            width: 250px;
+            font-size: 12px;
+        }
+
+        #search-bar::placeholder {
+            color: #999;
+        }
+
+        #search-bar:focus {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .spacer {
+            flex-grow: 1;
+        }
+
+        #clock {
+            font-size: 12px;
+            color: #999;
+            min-width: 50px;
+            text-align: right;
+        }
+
+        /* MODALS & MENUS */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            z-index: 9998;
+        }
+
+        .overlay.active {
+            display: block;
+        }
+
+        .menu {
+            position: fixed;
+            background: rgba(30, 30, 30, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            display: none;
+            flex-direction: column;
+            z-index: 9999;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+        }
+
+        .menu.active {
+            display: flex;
+        }
+
+        #start-menu {
+            bottom: 70px;
+            left: 15px;
+            width: 500px;
+            height: 500px;
+            flex-direction: row;
+        }
+
+        #wallpaper-menu {
+            bottom: 70px;
+            right: 15px;
+            width: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .menu-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 12px;
+            transition: all 0.2s ease;
+            border: none;
+            background: transparent;
+            color: white;
+            text-align: left;
+            width: 100%;
+        }
+
+        .menu-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(30, 30, 30, 0.98);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 30px;
+            min-width: 400px;
+            display: none;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 9999;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-label {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .form-input {
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            color: white;
+            font-size: 12px;
+            outline: none;
+        }
+
+        .form-input:focus {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 15px;
+        }
+
+        .btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: #0078d7;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #106ebe;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px 20px;
+            color: white;
+            font-size: 12px;
+            z-index: 9997;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .wallpaper-preview {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            display: inline-block;
+            margin-right: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            vertical-align: middle;
+        }
+
+        .color-preview {
+            width: 100%;
+            height: 60px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin: 10px 0;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #0078d7;
+            cursor: pointer;
+        }
+
+        input[type="color"] {
+            width: 100%;
+            height: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .menu-section {
+            padding: 10px;
+            font-size: 10px;
+            color: #666;
+            text-transform: uppercase;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .google-tiles {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            padding: 15px;
+        }
+
+        .google-tile {
+            aspect-ratio: 1;
+            background: #0078d7;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 10px;
+            border: none;
+        }
+
+        .google-tile:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 120, 215, 0.3);
+        }
+
+        .google-tile-icon {
+            font-size: 28px;
+            margin-bottom: 4px;
+        }
+
+        .menu-left {
+            flex: 0.5;
+            padding: 15px;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            overflow-y: auto;
+        }
+
+        .menu-right {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        #menu-portals {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .windows-logo {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            position: relative;
+        }
+
+        .windows-logo span {
+            position: absolute;
+            background: currentColor;
+        }
+
+        .w1 { width: 8px; height: 8px; top: 0; left: 0; }
+        .w2 { width: 8px; height: 8px; top: 0; right: 0; }
+        .w3 { width: 8px; height: 8px; bottom: 0; left: 0; }
+        .w4 { width: 8px; height: 8px; bottom: 0; right: 0; }
+    </style>
+</head>
+<body>
+
+<div id="desktop" class="theme-black">
+    <!-- WIDGETS -->
+    <div id="widgets">
+        <div class="widget">
+            <div class="widget-title">⛅ Weather</div>
+            <div style="text-align: center; margin: 10px 0;">
+                <div style="font-size: 24px; color: #E67E22; font-weight: bold;" id="temp">72°</div>
+                <div style="font-size: 10px; color: #999;">Partly Cloudy</div>
+            </div>
+        </div>
+
+        <div class="widget">
+            <div class="widget-title">📊 System</div>
+            <div class="stat-row">
+                <span>CPU</span>
+                <span style="color: #0078d7;" id="cpu-stat">45%</span>
+            </div>
+            <div class="stat-row">
+                <span>Memory</span>
+                <span style="color: #0078d7;" id="mem-stat">62%</span>
+            </div>
+            <div class="stat-row">
+                <span>Portals</span>
+                <span style="color: #0078d7;" id="portal-count">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="content">
+        <div id="portal-grid"></div>
+    </div>
+
+    <!-- START MENU -->
+    <div class="menu" id="start-menu">
+        <div class="menu-left">
+            <div style="font-size: 11px; color: #999; margin-bottom: 10px; font-weight: 600;">SEARCH</div>
+            <input type="text" id="menu-search" class="form-input" placeholder="Search..." style="width: 100%; margin-bottom: 15px;">
+            <div id="menu-portals"></div>
+        </div>
+
+        <div class="menu-right">
+            <div class="menu-section">Google Suite</div>
+            <div class="google-tiles">
+                <button class="google-tile" style="background: #0078d7;" onclick="openLink('https://docs.google.com'); closeStart();">
+                    <div class="google-tile-icon">📄</div>
+                    <div>Docs</div>
+                </button>
+                <button class="google-tile" style="background: #34A853;" onclick="openLink('https://sheets.google.com'); closeStart();">
+                    <div class="google-tile-icon">📊</div>
+                    <div>Sheets</div>
+                </button>
+                <button class="google-tile" style="background: #EA4335;" onclick="openLink('https://slides.google.com'); closeStart();">
+                    <div class="google-tile-icon">🖼️</div>
+                    <div>Slides</div>
+                </button>
+                <button class="google-tile" style="background: #4285F4;" onclick="openLink('https://forms.google.com'); closeStart();">
+                    <div class="google-tile-icon">📝</div>
+                    <div>Forms</div>
+                </button>
+                <button class="google-tile" style="background: #1F2937;" onclick="openLink('https://drive.google.com'); closeStart();">
+                    <div class="google-tile-icon">📁</div>
+                    <div>Drive</div>
+                </button>
+                <button class="google-tile" style="background: #EA4335;" onclick="openLink('https://mail.google.com'); closeStart();">
+                    <div class="google-tile-icon">✉️</div>
+                    <div>Gmail</div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- WALLPAPER MENU -->
+    <div class="menu" id="wallpaper-menu">
+        <div class="menu-section">Themes</div>
+        <button class="menu-item" onclick="setTheme('black')"><span class="wallpaper-preview" style="background: #000;"></span>Black</button>
+        <button class="menu-item" onclick="setTheme('blue')"><span class="wallpaper-preview" style="background: linear-gradient(135deg, #0078d7, #005a9e);"></span>Blue</button>
+        <button class="menu-item" onclick="setTheme('purple')"><span class="wallpaper-preview" style="background: linear-gradient(135deg, #9B59B6, #8E44AD);"></span>Purple</button>
+        <button class="menu-item" onclick="setTheme('green')"><span class="wallpaper-preview" style="background: linear-gradient(135deg, #27AE60, #1E8449);"></span>Green</button>
+        <button class="menu-item" onclick="setTheme('sunset')"><span class="wallpaper-preview" style="background: linear-gradient(135deg, #E67E22, #D35400);"></span>Sunset</button>
+        <button class="menu-item" onclick="setTheme('ocean')"><span class="wallpaper-preview" style="background: linear-gradient(135deg, #2E86AB, #0B3C5D);"></span>Ocean</button>
+        <button class="menu-item" onclick="setTheme('forest')"><span class="wallpaper-preview" style="background: linear-gradient(135deg, #1B4D2E, #0F3D1F);"></span>Forest</button>
+
+        <div class="menu-section">Custom</div>
+        <button class="menu-item" onclick="openColorModal()">🎨 Solid Color</button>
+        <button class="menu-item" onclick="openGradientModal()">🌈 Gradient</button>
+        <button class="menu-item" onclick="document.getElementById('file-input').click()">🖼️ Upload</button>
+        <input type="file" id="file-input" accept="image/*" onchange="uploadWallpaper(event)">
+    </div>
+
+    <!-- MODALS -->
+    <div class="overlay" id="overlay"></div>
+
+    <div class="modal" id="add-portal-modal">
+        <div class="modal-title">➕ Add Portal</div>
+        <div class="form-group">
+            <label class="form-label">Name:</label>
+            <input type="text" id="portal-name" class="form-input" placeholder="e.g., GitHub">
+        </div>
+        <div class="form-group">
+            <label class="form-label">URL:</label>
+            <input type="text" id="portal-url" class="form-input" placeholder="e.g., github.com">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Icon:</label>
+            <input type="text" id="portal-icon" class="form-input" placeholder="e.g., 🐙" maxlength="5" value="🌐">
+        </div>
+        <div class="modal-buttons">
+            <button class="btn btn-secondary" onclick="closeAllModals()">Cancel</button>
+            <button class="btn btn-primary" onclick="createPortal()">Add</button>
+        </div>
+    </div>
+
+    <div class="modal" id="color-modal">
+        <div class="modal-title">🎨 Pick a Color</div>
+        <input type="color" id="color-input" value="#0078d7" onchange="previewColor()">
+        <div class="color-preview" id="color-preview" style="background: #0078d7;"></div>
+        <div class="modal-buttons">
+            <button class="btn btn-secondary" onclick="closeAllModals()">Cancel</button>
+            <button class="btn btn-primary" onclick="applyColor()">Apply</button>
+        </div>
+    </div>
+
+    <div class="modal" id="gradient-modal">
+        <div class="modal-title">🌈 Gradient</div>
+        <div class="form-group">
+            <label class="form-label">Color 1:</label>
+            <input type="color" id="grad-c1" value="#FF006E" onchange="previewGradient()">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Color 2:</label>
+            <input type="color" id="grad-c2" value="#00D9FF" onchange="previewGradient()">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Angle: <span id="angle-text">45</span>°</label>
+            <input type="range" id="grad-angle" min="0" max="360" value="45" onchange="previewGradient()">
+        </div>
+        <div class="color-preview" id="gradient-preview"></div>
+        <div class="modal-buttons">
+            <button class="btn btn-secondary" onclick="closeAllModals()">Cancel</button>
+            <button class="btn btn-primary" onclick="applyGradient()">Apply</button>
+        </div>
+    </div>
+
+    <!-- TASKBAR -->
+    <div id="taskbar">
+        <button class="taskbar-btn" onclick="toggleStart()" title="Start">
+            <span class="windows-logo">
+                <span class="w1"></span><span class="w2"></span>
+                <span class="w3"></span><span class="w4"></span>
+            </span>
+        </button>
+        <input type="text" id="search-bar" placeholder="🔍 Search portals..." onkeyup="searchPortals()">
+        <button class="taskbar-btn" onclick="openAddPortal()" title="Add">➕</button>
+        <button class="taskbar-btn" onclick="toggleEditMode()" title="Edit">✏️</button>
+        <button class="taskbar-btn" onclick="toggleWallpaper()" title="Wallpaper">🎨</button>
+        <button class="taskbar-btn" onclick="showStats()" title="Stats">📊</button>
+        <div class="spacer"></div>
+        <div id="clock">10:00</div>
+    </div>
+</div>
+
+<script>
+    // STATE
+    let portals = [];
+    let editMode = false;
+    let currentTheme = 'black';
+
+    // INIT
+    window.addEventListener('load', () => {
+        portals = JSON.parse(localStorage.getItem('portals') || JSON.stringify([
+            { name: 'Google Docs', icon: '📄', url: 'https://docs.google.com' },
+            { name: 'GitHub', icon: '🐙', url: 'https://github.com' },
+            { name: 'YouTube', icon: '🎬', url: 'https://youtube.com' },
+        ]));
+
+        currentTheme = localStorage.getItem('theme') || 'black';
+        document.getElementById('desktop').className = 'theme-' + currentTheme;
+
+        // LOAD SAVED WALLPAPER
+        const savedWallpaper = localStorage.getItem('wallpaper');
+        const wallpaperType = localStorage.getItem('wallpaper-type');
+        
+        if (savedWallpaper && wallpaperType === 'color') {
+            document.getElementById('desktop').style.background = savedWallpaper;
+        } else if (savedWallpaper && wallpaperType === 'gradient') {
+            document.getElementById('desktop').style.background = savedWallpaper;
+        } else if (savedWallpaper && wallpaperType === 'image') {
+            document.getElementById('desktop').style.background = `url('${savedWallpaper}')`;
+            document.getElementById('desktop').style.backgroundSize = 'cover';
+            document.getElementById('desktop').style.backgroundPosition = 'center';
+        }
+
+        renderPortals();
+        updateClock();
+        updateStats();
+
+        setInterval(updateClock, 1000);
+        setInterval(updateStats, 3000);
+
+        document.getElementById('overlay').addEventListener('click', closeAllModals);
+        document.getElementById('menu-search').addEventListener('keyup', menuSearch);
+    });
+
+    // PORTAL FUNCTIONS
+    function renderPortals() {
+        const grid = document.getElementById('portal-grid');
+        grid.innerHTML = '';
+
+        portals.forEach((p, i) => {
+            const div = document.createElement('div');
+            div.className = 'portal';
+            div.innerHTML = `
+                <button class="delete-btn" onclick="deletePortal(${i})">×</button>
+                <div class="portal-icon">${p.icon}</div>
+                <div class="portal-name">${p.name}</div>
+            `;
+            div.addEventListener('click', () => !editMode && openLink(p.url));
+            grid.appendChild(div);
+        });
+
+        renderMenuPortals();
+        document.getElementById('portal-count').textContent = portals.length;
+    }
+
+    function renderMenuPortals() {
+        const container = document.getElementById('menu-portals');
+        container.innerHTML = '';
+        portals.slice(0, 5).forEach(p => {
+            const btn = document.createElement('button');
+            btn.className = 'menu-item';
+            btn.textContent = p.icon + ' ' + p.name;
+            btn.onclick = () => { openLink(p.url); closeStart(); };
+            container.appendChild(btn);
+        });
+    }
+
+    function createPortal() {
+        const name = document.getElementById('portal-name').value.trim();
+        const url = document.getElementById('portal-url').value.trim();
+        const icon = document.getElementById('portal-icon').value.trim() || '🌐';
+
+        if (!name || !url) { toast('Fill all fields!'); return; }
+
+        portals.push({
+            name,
+            url: url.startsWith('http') ? url : 'https://' + url,
+            icon
+        });
+
+        localStorage.setItem('portals', JSON.stringify(portals));
+        renderPortals();
+        closeAllModals();
+        toast('✅ Portal added!');
+        document.getElementById('portal-name').value = '';
+        document.getElementById('portal-url').value = '';
+    }
+
+    function deletePortal(i) {
+        if (confirm('Delete?')) {
+            portals.splice(i, 1);
+            localStorage.setItem('portals', JSON.stringify(portals));
+            renderPortals();
+        }
+    }
+
+    // SEARCH
+    function searchPortals() {
+        const q = document.getElementById('search-bar').value.toLowerCase();
+        document.querySelectorAll('.portal').forEach((el, i) => {
+            el.style.display = portals[i].name.toLowerCase().includes(q) ? '' : 'none';
+        });
+    }
+
+    function menuSearch() {
+        const q = document.getElementById('menu-search').value.toLowerCase();
+        const container = document.getElementById('menu-portals');
+        container.innerHTML = '';
+        portals.filter(p => p.name.toLowerCase().includes(q)).forEach(p => {
+            const btn = document.createElement('button');
+            btn.className = 'menu-item';
+            btn.textContent = p.icon + ' ' + p.name;
+            btn.onclick = () => { openLink(p.url); closeStart(); };
+            container.appendChild(btn);
+        });
+    }
+
+    // UI
+    function toggleStart() {
+        document.getElementById('start-menu').classList.toggle('active');
+        document.getElementById('wallpaper-menu').classList.remove('active');
+        document.getElementById('overlay').classList.toggle('active');
+    }
+
+    function closeStart() {
+        document.getElementById('start-menu').classList.remove('active');
+        document.getElementById('overlay').classList.remove('active');
+    }
+
+    function toggleWallpaper() {
+        document.getElementById('wallpaper-menu').classList.toggle('active');
+        document.getElementById('start-menu').classList.remove('active');
+        document.getElementById('overlay').classList.toggle('active');
+    }
+
+    function toggleEditMode() {
+        editMode = !editMode;
+        document.getElementById('desktop').classList.toggle('edit-mode', editMode);
+        toast(editMode ? '✏️ Edit ON' : '✏️ Edit OFF');
+    }
+
+    function openAddPortal() {
+        document.getElementById('overlay').classList.add('active');
+        document.getElementById('add-portal-modal').classList.add('active');
+        document.getElementById('portal-name').focus();
+    }
+
+    function openColorModal() {
+        document.getElementById('overlay').classList.add('active');
+        document.getElementById('color-modal').classList.add('active');
+    }
+
+    function previewColor() {
+        const c = document.getElementById('color-input').value;
+        document.getElementById('color-preview').style.background = c;
+    }
+
+    function applyColor() {
+        const c = document.getElementById('color-input').value;
+        document.getElementById('desktop').style.background = c;
+        localStorage.setItem('wallpaper', c);
+        localStorage.setItem('wallpaper-type', 'color');
+        closeAllModals();
+        toast('🎨 Applied!');
+    }
+
+    function openGradientModal() {
+        document.getElementById('overlay').classList.add('active');
+        document.getElementById('gradient-modal').classList.add('active');
+        previewGradient();
+    }
+
+    function previewGradient() {
+        const c1 = document.getElementById('grad-c1').value;
+        const c2 = document.getElementById('grad-c2').value;
+        const a = document.getElementById('grad-angle').value;
+        const g = `linear-gradient(${a}deg, ${c1}, ${c2})`;
+        document.getElementById('gradient-preview').style.background = g;
+        document.getElementById('angle-text').textContent = a;
+    }
+
+    function applyGradient() {
+        const c1 = document.getElementById('grad-c1').value;
+        const c2 = document.getElementById('grad-c2').value;
+        const a = document.getElementById('grad-angle').value;
+        const gradient = `linear-gradient(${a}deg, ${c1}, ${c2})`;
+        document.getElementById('desktop').style.background = gradient;
+        localStorage.setItem('wallpaper', gradient);
+        localStorage.setItem('wallpaper-type', 'gradient');
+        closeAllModals();
+        toast('🌈 Applied!');
+    }
+
+    function uploadWallpaper(e) {
+        const f = e.target.files[0];
+        if (!f) return;
+        const r = new FileReader();
+        r.onload = (ev) => {
+            const imageData = ev.target.result;
+            document.getElementById('desktop').style.background = `url('${imageData}')`;
+            document.getElementById('desktop').style.backgroundSize = 'cover';
+            document.getElementById('desktop').style.backgroundPosition = 'center';
+            localStorage.setItem('wallpaper', imageData);
+            localStorage.setItem('wallpaper-type', 'image');
+            closeAllModals();
+            toast('🖼️ Uploaded!');
+        };
+        r.readAsDataURL(f);
+    }
+
+    function setTheme(t) {
+        currentTheme = t;
+        document.getElementById('desktop').className = 'theme-' + t;
+        localStorage.setItem('theme', t);
+        localStorage.removeItem('wallpaper');
+        localStorage.removeItem('wallpaper-type');
+        closeAllModals();
+        toast('🎨 Theme!');
+    }
+
+    function closeAllModals() {
+        document.getElementById('overlay').classList.remove('active');
+        document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
+        document.getElementById('start-menu').classList.remove('active');
+        document.getElementById('wallpaper-menu').classList.remove('active');
+    }
+
+    function openLink(url) {
+        window.open(url, '_blank');
+    }
+
+    function updateClock() {
+        const n = new Date();
+        document.getElementById('clock').textContent = n.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function updateStats() {
+        document.getElementById('temp').textContent = Math.floor(Math.random() * 40 + 35) + '°';
+        document.getElementById('cpu-stat').textContent = Math.floor(Math.random() * 60 + 20) + '%';
+        document.getElementById('mem-stat').textContent = Math.floor(Math.random() * 40 + 40) + '%';
+    }
+
+    function showStats() {
+        alert(`📊 STATS\n━━━━━\nPortals: ${portals.length}\nStorage: ${Math.round(new Blob([JSON.stringify(localStorage)]).size / 1024)}KB`);
+    }
+
+    function toast(m) {
+        const t = document.createElement('div');
+        t.className = 'toast';
+        t.textContent = m;
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 3000);
+    }
+
+    // KEYBOARD
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeAllModals();
+        if (e.ctrlKey && e.key === 'm') { e.preventDefault(); toggleStart(); }
+    });
+</script>
+
+</body>
+</html>
